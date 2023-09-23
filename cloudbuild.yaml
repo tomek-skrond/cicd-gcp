@@ -1,0 +1,23 @@
+### PROJECT_ID variable is imported automatically by gcloud that is already authenticated to GCP
+### Authentication to GCP with gcloud is required for cloud build to execute commands in the pipeline
+steps:
+ # Step 0 - Build the docker image
+- name: 'gcr.io/cloud-builders/docker'
+  args: [ 'build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cicd-flask/testwebserver:v1', '.' ]
+
+
+# Step 1 - Run unit tests inside the docker container
+- name: 'europe-west1-docker.pkg.dev/$PROJECT_ID/cicd-flask/testwebserver:v1'
+  entrypoint: python
+  args: ["-m", "pytest", "."] 
+
+
+# Step 2 - Push the docker image to an Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cicd-flask/testwebserver:v1']
+
+
+# Deploy container image to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  args: ['run', 'deploy', 'cloudrunservice', '--image', 'europe-west1-docker.pkg.dev/apiserver-392718/cicd-flask/testwebserver:v1', '--region', 'europe-west1', '--platform', 'managed', '--allow-unauthenticated', '--port', '3000']
+  entrypoint: gcloud
